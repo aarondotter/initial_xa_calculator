@@ -473,7 +473,9 @@ contains
        write(0,fmt) ' Z = ', sum(mass_frac(3:))
        write(0,fmt) ' X+Y+Z = ', sum(mass_frac)
     endif
-    open(98,file='input_Zbase')
+    open(98,file='input_XYZ')
+    write(98,'(1p,e20.10)') mass_frac(1)
+    write(98,'(1p,e20.10)') mass_frac(2)
     write(98,'(1p,e20.10)') sum(mass_frac(3:num_chem_elements))
     close(98)
   end subroutine output_XYZ

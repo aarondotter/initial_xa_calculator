@@ -12,9 +12,9 @@ or
 
       set_uniform_xa_from_file = .true.
 
-in the star_job section of the MESA inlist. The initial_xa filename is, by default, input_initial_xa.data and so should be set in the same inlist as
+in the star_job section of the MESA inlist. The initial_xa filename is, by default, input_initial_composition.data and so should be set in the same inlist as
 
-      file_for_uniform_xa = 'input_initial_xa.data'
+      file_for_uniform_xa = 'input_initial_composition.data'
 
 It is current with MESA modules as of the 9575 release (02/2017).
 
