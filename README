@@ -1,11 +1,20 @@
-initial_xa_calculator is a utility that takes as argument the name of the mesa network file (*.net), initial [Fe/H], and intial [alpha/Fe], as well as an optional dY/dZ. It creates as output an initial_xa file for use with MESA/star. The file can be used when either 
+initial_xa_calculator is a utility that takes as argument 
+i) the name of the mesa network file (in mesa/data/net_data/nets/), 
+ii) initial [Fe/H], 
+iii) and intial [alpha/Fe], 
+iv) as well as an optional dY/dZ. 
 
-      set_uniform_initial_xa_from_file = .false.
-      set_uniform_xa_from_file = .false.
+It creates as output an initial_xa file for use with MESA/star. The file can be used when either 
 
-are set to true in the star_job section of the MESA inlist. The initial_xa filename is, by default, input_initial_composition.data and so should be set in the same inlist as
+      set_uniform_initial_xa_from_file = .true.
 
-      file_for_uniform_xa = 'input_initial_composition.data'
+or
+
+      set_uniform_xa_from_file = .true.
+
+in the star_job section of the MESA inlist. The initial_xa filename is, by default, input_initial_xa.data and so should be set in the same inlist as
+
+      file_for_uniform_xa = 'input_initial_xa.data'
 
 It is current with MESA modules as of the 9575 release (02/2017).
 
@@ -29,3 +38,7 @@ usage:
 
 initial_xa_calculator is basedon the Asplund et al. (2009) solar abundance scale.
 
+For nets with more than one isotope of the same element, the isotope fractions are set using the Lodders 2003 table in mesa/chem.
+Isotope fractions are always required to sum to 1.
+
+The code follows the MESA convention (by default, see 'dump_missing_metals_into_heaviest' in star_job) to add the fraction of all elements missing from the net to the heaviest element in the net.

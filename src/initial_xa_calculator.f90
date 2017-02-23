@@ -506,7 +506,7 @@ contains
     !for MESA/star file_for_uniform_xa
     num_elements = size(e)
     sum = 0d0
-    open(99,file='input_initial_composition.data')
+    open(99,file='input_initial_xa.data')
     do pass=1,2
        do i=1,num_elements
           do j=1,num_chem_elements
