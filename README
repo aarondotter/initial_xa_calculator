@@ -1,0 +1,31 @@
+initial_xa_calculator is a utility that takes as argument the name of the mesa network file (*.net), initial [Fe/H], and intial [alpha/Fe], as well as an optional dY/dZ. It creates as output an initial_xa file for use with MESA/star. The file can be used when either 
+
+      set_uniform_initial_xa_from_file = .false.
+      set_uniform_xa_from_file = .false.
+
+are set to true in the star_job section of the MESA inlist. The initial_xa filename is, by default, input_initial_composition.data and so should be set in the same inlist as
+
+      file_for_uniform_xa = 'input_initial_composition.data'
+
+It is current with MESA modules as of the 9575 release (02/2017).
+
+The program relies on several MESA modules. To compile the code requires that:
+
+i) MESA is installed and
+ii) the MESA_DIR environment variable is set. Otherwise you must set it explicitly in src/makefile.
+
+To compile, simply execute the mk script, as 
+
+./mk
+
+Running the program without any commmand line arguments will generate the following output:
+
+usage:
+    ./initial_xa_calculator [net_name] [Fe/H] [alpha/Fe] {dY/dZ}
+     net_name = mesa/net network 
+     [Fe/H] = 0 for solar
+     [alpha/Fe] = 0 for solar
+     dY/dZ = 1.5 by default, OPTIONAL
+
+initial_xa_calculator is basedon the Asplund et al. (2009) solar abundance scale.
+
