@@ -10,7 +10,7 @@ program initial_xa_calculator
 
   implicit none
 
-  logical, parameter :: verbose = .false.
+  logical, parameter :: verbose = .true.
   logical, parameter :: do_OPAL = .false.
   logical, parameter :: do_MESA = .true.
   logical, parameter :: use_ATLAS_atm = .false.
@@ -399,7 +399,27 @@ contains
        write(0,*) 'chem_init failed'
        return
     end if
-    call rates_init('reactions.list', '', .false., '', '', '', ierr)
+
+!      subroutine rates_init( &
+!           reactionlist_filename, jina_reaclib_filename, &
+!           rates_table_dir_in, &
+!           use_special_weak_rates, &
+!           special_weak_states_file, &
+!           special_weak_transitions_file, &
+!           cache_dir, ierr)
+!         use rates_def
+!         use reaclib_input, only: do_read_reaclib
+!         use load_weak, only: load_weak_data
+!         use load_ecapture, only: load_ecapture_data
+!         use rates_initialize, only: init_rates_info
+!         
+!         character (len=*), intent(in) :: reactionlist_filename, jina_reaclib_filename, rates_table_dir_in
+!         logical, intent(in) :: use_special_weak_rates
+!         character (len=*), intent(in) :: special_weak_states_file, special_weak_transitions_file
+!         character (len=*), intent(in) :: cache_dir ! '' means use default
+!         integer, intent(out) :: ierr ! 0 means AOK. 
+
+    call rates_init('reactions.list', '', 'rate_tables', .false., '', '', '', ierr)
     if (ierr /= 0) then
        write(0,*) 'rates_init failed'
        return
