@@ -15,6 +15,9 @@ program initial_xa_calculator
   logical, parameter :: do_MESA = .true.
   logical, parameter :: use_ATLAS_atm = .false.
   logical, parameter :: do_XYZ = .true.
+  integer, parameter :: solar_AGSS09 = 1
+  integer, parameter :: solar_GS98 = 2
+  
   logical :: scale_Y
   !for the mass fractions, etc.
   real(dp) :: log_num_frac(num_chem_elements)
@@ -24,7 +27,7 @@ program initial_xa_calculator
   real(dp) :: X_div_H(num_chem_elements)
   real(dp) :: dY_div_dZ = 0d0, Z_div_X, X, Y, Z
   real(dp), parameter :: Y_BBN = 0.249d0
-  integer :: el, i, id, ierr, j, k, handle, species
+  integer :: el, i, id, ierr, j, k, handle, species, solar_mix
   integer, pointer :: chem_id(:), net_iso(:)
 
   !for the net
@@ -45,7 +48,10 @@ program initial_xa_calculator
   end type element
   type(element), allocatable :: e(:)
 
-
+  !set solar mix option here:
+  solar_mix=solar_AGSS09
+  !solar_mix = solar_GS98
+  
   if(command_argument_count() < 2) then
      write(0,*) ' usage:'
      write(0,*) '   ./initial_xa_calculator [net_name] [Fe/H] [alpha/Fe] {dY/dZ}'
@@ -84,7 +90,7 @@ program initial_xa_calculator
      !read A09 file, adjust ratios, compute number and mass fractions
      call init_atlas_abunds
   else     
-     call set_abunds(Fe_div_H, alpha_div_Fe)
+     call set_abunds(Fe_div_H, alpha_div_Fe,solar_mix)
   endif
 
   !determine number and names of elements in net g
@@ -100,99 +106,186 @@ program initial_xa_calculator
 
 contains
 
-  subroutine set_abunds(Fe_div_H, alpha_div_Fe)
+  subroutine set_abunds(Fe_div_H, alpha_div_Fe, solar_mix)
     real(dp), intent(in) :: Fe_div_H, alpha_div_Fe
+    integer, intent(in) :: solar_mix
     real(dp) :: Zold, Xold, Yold
     log_num_frac = -20d0
-    log_num_frac(e_H ) = 12.0
-    log_num_frac(e_He) = 10.93
-    ! first store log abundances from the paper
-    log_num_frac(e_li) = 3.26
-    log_num_frac(e_be) = 1.38
-    log_num_frac(e_b ) = 2.70
-    log_num_frac(e_c ) = 8.43
-    log_num_frac(e_n ) = 7.83
-    log_num_frac(e_o ) = 8.69
-    log_num_frac(e_f ) = 4.56
-    log_num_frac(e_ne) = 7.93
-    log_num_frac(e_na) = 6.24
-    log_num_frac(e_mg) = 7.60
-    log_num_frac(e_al) = 6.45
-    log_num_frac(e_si) = 7.51
-    log_num_frac(e_p ) = 5.41
-    log_num_frac(e_s ) = 7.12
-    log_num_frac(e_cl) = 5.50
-    log_num_frac(e_ar) = 6.40
-    log_num_frac(e_k ) = 5.03
-    log_num_frac(e_ca) = 6.34
-    log_num_frac(e_sc) = 3.15
-    log_num_frac(e_ti) = 4.95
-    log_num_frac(e_v ) = 3.93
-    log_num_frac(e_cr) = 5.64
-    log_num_frac(e_mn) = 5.43
-    log_num_frac(e_fe) = 7.50
-    log_num_frac(e_co) = 4.99
-    log_num_frac(e_ni) = 6.22
-    log_num_frac(e_cu) = 4.19
-    log_num_frac(e_zn) = 4.56
-    log_num_frac(e_ga) = 3.04
-    log_num_frac(e_ge) = 3.65
-    log_num_frac(e_as) = 2.30 !meteor
-    log_num_frac(e_se) = 3.34 !meteor
-    log_num_frac(e_br) = 2.54 !meteor
-    log_num_frac(e_kr) = 3.25 !indirect
-    log_num_frac(e_rb) = 2.52
-    log_num_frac(e_sr) = 2.87
-    log_num_frac(e_y ) = 2.21
-    log_num_frac(e_zr) = 2.58
-    log_num_frac(e_nb) = 1.46
-    log_num_frac(e_mo) = 1.88
-    log_num_frac(e_Ru) = 1.75
-    log_num_frac(e_Rh) = 0.91
-    log_num_frac(e_Pd) = 1.57
-    log_num_frac(e_Ag) = 0.94
-    log_num_frac(e_Cd) = 1.71
-    log_num_frac(e_In) = 0.80
-    log_num_frac(e_Sn) = 2.04
-    log_num_frac(e_Sb) = 1.01
-    log_num_frac(e_Te) = 2.18
-    log_num_frac(e_I ) = 1.55
-    log_num_frac(e_Xe) = 2.24
-    log_num_frac(e_Cs) = 1.08
-    log_num_frac(e_Ba) = 2.18
-    log_num_frac(e_La) = 1.10
-    log_num_frac(e_Ce) = 1.58
-    log_num_frac(e_Pr) = 0.72
-    log_num_frac(e_Nd) = 1.42
-    log_num_frac(e_Sm) = 0.96
-    log_num_frac(e_Eu) = 0.52
-    log_num_frac(e_Gd) = 1.07
-    log_num_frac(e_Tb) = 0.30
-    log_num_frac(e_Dy) = 1.10
-    log_num_frac(e_Ho) = 0.48
-    log_num_frac(e_Er) = 0.92
-    log_num_frac(e_Tm) = 0.10
-    log_num_frac(e_Yb) = 0.84
-    log_num_frac(e_Lu) = 0.10
-    log_num_frac(e_Hf) = 0.85
-    log_num_frac(e_Ta) =-0.12
-    log_num_frac(e_W ) = 0.85
-    log_num_frac(e_Re) = 0.26
-    log_num_frac(e_Os) = 1.40
-    log_num_frac(e_Ir) = 1.38
-    log_num_frac(e_Pt) = 1.62
-    log_num_frac(e_Au) = 0.92
-    log_num_frac(e_Hg) = 1.17
-    log_num_frac(e_Tl) = 0.90
-    log_num_frac(e_Pb) = 1.75
-    log_num_frac(e_Bi) = 0.65
-    log_num_frac(e_Th) = 0.02
-    log_num_frac(e_U) = -0.54
+
+    if(solar_mix==solar_GS98)then
+       log_num_frac(e_H ) = 12.0
+       log_num_frac(e_He) = 10.93
+       log_num_frac(e_li) = 3.31
+       log_num_frac(e_be) = 1.42
+       log_num_frac(e_b ) = 2.79
+       log_num_frac(e_c ) = 8.52
+       log_num_frac(e_n ) = 7.92
+       log_num_frac(e_o ) = 8.83
+       log_num_frac(e_f ) = 4.48
+       log_num_frac(e_ne) = 8.08
+       log_num_frac(e_na) = 6.32
+       log_num_frac(e_mg) = 7.58
+       log_num_frac(e_al) = 6.49
+       log_num_frac(e_si) = 7.56
+       log_num_frac(e_p ) = 5.56
+       log_num_frac(e_s ) = 7.20
+       log_num_frac(e_cl) = 5.28
+       log_num_frac(e_ar) = 6.40
+       log_num_frac(e_k ) = 5.13
+       log_num_frac(e_ca) = 6.35
+       log_num_frac(e_sc) = 3.10
+       log_num_frac(e_ti) = 4.94
+       log_num_frac(e_v ) = 4.02
+       log_num_frac(e_cr) = 5.69
+       log_num_frac(e_mn) = 5.53
+       log_num_frac(e_fe) = 7.50
+       log_num_frac(e_co) = 4.91
+       log_num_frac(e_ni) = 6.25
+       log_num_frac(e_cu) = 4.29 
+       log_num_frac(e_zn) = 4.67
+       log_num_frac(e_ga) = 3.13
+       log_num_frac(e_ge) = 3.63
+       log_num_frac(e_as) = 2.37
+       log_num_frac(e_se) = 3.41
+       log_num_frac(e_br) = 2.63
+       log_num_frac(e_kr) = 3.31
+       log_num_frac(e_rb) = 2.41
+       log_num_frac(e_sr) = 2.92
+       log_num_frac(e_y ) = 2.23 
+       log_num_frac(e_zr) = 2.61
+       log_num_frac(e_nb) = 1.40
+       log_num_frac(e_mo) = 1.97
+       log_num_frac(e_Ru) = 1.83
+       log_num_frac(e_Rh) = 1.10
+       log_num_frac(e_Pd) = 1.70
+       log_num_frac(e_Ag) = 1.24
+       log_num_frac(e_Cd) = 1.76
+       log_num_frac(e_In) = 0.82
+       log_num_frac(e_Sn) = 2.14
+       log_num_frac(e_Sb) = 1.03
+       log_num_frac(e_Te) = 2.24
+       log_num_frac(e_I ) = 1.51 
+       log_num_frac(e_Xe) = 2.17
+       log_num_frac(e_Cs) = 1.13
+       log_num_frac(e_Ba) = 2.22
+       log_num_frac(e_La) = 1.22
+       log_num_frac(e_Ce) = 1.63
+       log_num_frac(e_Pr) = 0.80
+       log_num_frac(e_Nd) = 1.49
+       log_num_frac(e_Sm) = 0.98
+       log_num_frac(e_Eu) = 0.55
+       log_num_frac(e_Gd) = 1.09
+       log_num_frac(e_Tb) = 0.35
+       log_num_frac(e_Dy) = 1.17
+       log_num_frac(e_Ho) = 0.51
+       log_num_frac(e_Er) = 0.97
+       log_num_frac(e_Tm) = 0.15
+       log_num_frac(e_Yb) = 0.96
+       log_num_frac(e_Lu) = 0.13
+       log_num_frac(e_Hf) = 0.75
+       log_num_frac(e_Ta) =-0.13
+       log_num_frac(e_W ) = 0.69 
+       log_num_frac(e_Re) = 0.28
+       log_num_frac(e_Os) = 1.39
+       log_num_frac(e_Ir) = 1.37
+       log_num_frac(e_Pt) = 1.69
+       log_num_frac(e_Au) = 0.85
+       log_num_frac(e_Hg) = 1.13
+       log_num_frac(e_Tl) = 0.83
+       log_num_frac(e_Pb) = 2.06
+       log_num_frac(e_Bi) = 0.71
+       log_num_frac(e_Th) = 0.09
+       log_num_frac(e_U ) =-0.50
+    else !use Asplund et al. (2009) aka AGSS09
+       log_num_frac(e_H ) = 12.0
+       log_num_frac(e_He) = 10.93
+       log_num_frac(e_li) = 3.26
+       log_num_frac(e_be) = 1.38
+       log_num_frac(e_b ) = 2.70
+       log_num_frac(e_c ) = 8.43
+       log_num_frac(e_n ) = 7.83
+       log_num_frac(e_o ) = 8.69
+       log_num_frac(e_f ) = 4.56
+       log_num_frac(e_ne) = 7.93
+       log_num_frac(e_na) = 6.24
+       log_num_frac(e_mg) = 7.60
+       log_num_frac(e_al) = 6.45
+       log_num_frac(e_si) = 7.51
+       log_num_frac(e_p ) = 5.41
+       log_num_frac(e_s ) = 7.12
+       log_num_frac(e_cl) = 5.50
+       log_num_frac(e_ar) = 6.40
+       log_num_frac(e_k ) = 5.03
+       log_num_frac(e_ca) = 6.34
+       log_num_frac(e_sc) = 3.15
+       log_num_frac(e_ti) = 4.95
+       log_num_frac(e_v ) = 3.93
+       log_num_frac(e_cr) = 5.64
+       log_num_frac(e_mn) = 5.43
+       log_num_frac(e_fe) = 7.50
+       log_num_frac(e_co) = 4.99
+       log_num_frac(e_ni) = 6.22
+       log_num_frac(e_cu) = 4.19
+       log_num_frac(e_zn) = 4.56
+       log_num_frac(e_ga) = 3.04
+       log_num_frac(e_ge) = 3.65
+       log_num_frac(e_as) = 2.30 !meteor
+       log_num_frac(e_se) = 3.34 !meteor
+       log_num_frac(e_br) = 2.54 !meteor
+       log_num_frac(e_kr) = 3.25 !indirect
+       log_num_frac(e_rb) = 2.52
+       log_num_frac(e_sr) = 2.87
+       log_num_frac(e_y ) = 2.21
+       log_num_frac(e_zr) = 2.58
+       log_num_frac(e_nb) = 1.46
+       log_num_frac(e_mo) = 1.88
+       log_num_frac(e_Ru) = 1.75
+       log_num_frac(e_Rh) = 0.91
+       log_num_frac(e_Pd) = 1.57
+       log_num_frac(e_Ag) = 0.94
+       log_num_frac(e_Cd) = 1.71
+       log_num_frac(e_In) = 0.80
+       log_num_frac(e_Sn) = 2.04
+       log_num_frac(e_Sb) = 1.01
+       log_num_frac(e_Te) = 2.18
+       log_num_frac(e_I ) = 1.55
+       log_num_frac(e_Xe) = 2.24
+       log_num_frac(e_Cs) = 1.08
+       log_num_frac(e_Ba) = 2.18
+       log_num_frac(e_La) = 1.10
+       log_num_frac(e_Ce) = 1.58
+       log_num_frac(e_Pr) = 0.72
+       log_num_frac(e_Nd) = 1.42
+       log_num_frac(e_Sm) = 0.96
+       log_num_frac(e_Eu) = 0.52
+       log_num_frac(e_Gd) = 1.07
+       log_num_frac(e_Tb) = 0.30
+       log_num_frac(e_Dy) = 1.10
+       log_num_frac(e_Ho) = 0.48
+       log_num_frac(e_Er) = 0.92
+       log_num_frac(e_Tm) = 0.10
+       log_num_frac(e_Yb) = 0.84
+       log_num_frac(e_Lu) = 0.10
+       log_num_frac(e_Hf) = 0.85
+       log_num_frac(e_Ta) =-0.12
+       log_num_frac(e_W ) = 0.85
+       log_num_frac(e_Re) = 0.26
+       log_num_frac(e_Os) = 1.40
+       log_num_frac(e_Ir) = 1.38
+       log_num_frac(e_Pt) = 1.62
+       log_num_frac(e_Au) = 0.92
+       log_num_frac(e_Hg) = 1.17
+       log_num_frac(e_Tl) = 0.90
+       log_num_frac(e_Pb) = 1.75
+       log_num_frac(e_Bi) = 0.65
+       log_num_frac(e_Th) = 0.02
+       log_num_frac(e_U) = -0.54
+    endif
 
     call set_X_div_H(alpha_div_Fe,Fe_div_H, X_div_H)
-    
+
     log_num_frac = log_num_frac + X_div_H
-    
+
     !set number fractions and normalize
     num_frac = exp(ln10*log_num_Frac)
     num_frac = num_frac/sum(num_frac)
@@ -204,7 +297,7 @@ contains
     X = mass_frac(1)
     Y = mass_frac(2)
     Z = 1.0d0-(X+Y)
-    
+
     if( dY_div_dZ /=0.0d0 )then
 
        Xold= X
@@ -231,7 +324,7 @@ contains
 
        num_frac = mass_frac/element_atomic_weight
        num_frac = num_frac/sum(num_frac)
-       
+
     endif
   end subroutine set_abunds
 
@@ -400,26 +493,7 @@ contains
        return
     end if
 
-!      subroutine rates_init( &
-!           reactionlist_filename, jina_reaclib_filename, &
-!           rates_table_dir_in, &
-!           use_special_weak_rates, &
-!           special_weak_states_file, &
-!           special_weak_transitions_file, &
-!           cache_dir, ierr)
-!         use rates_def
-!         use reaclib_input, only: do_read_reaclib
-!         use load_weak, only: load_weak_data
-!         use load_ecapture, only: load_ecapture_data
-!         use rates_initialize, only: init_rates_info
-!         
-!         character (len=*), intent(in) :: reactionlist_filename, jina_reaclib_filename, rates_table_dir_in
-!         logical, intent(in) :: use_special_weak_rates
-!         character (len=*), intent(in) :: special_weak_states_file, special_weak_transitions_file
-!         character (len=*), intent(in) :: cache_dir ! '' means use default
-!         integer, intent(out) :: ierr ! 0 means AOK. 
-
-    call rates_init('reactions.list', '', 'rate_tables', .false., '', '', '', ierr)
+    call rates_init('reactions.list', '', 'rate_tables', .false., .false., '', '', '', ierr)
     if (ierr /= 0) then
        write(0,*) 'rates_init failed'
        return
