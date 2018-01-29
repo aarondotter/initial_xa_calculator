@@ -13,7 +13,6 @@ program initial_xa_calculator
   logical, parameter :: verbose = .true.
   logical, parameter :: do_OPAL = .false.
   logical, parameter :: do_MESA = .true.
-  logical, parameter :: use_ATLAS_atm = .false.
   logical, parameter :: do_XYZ = .true.
   integer, parameter :: solar_AGSS09 = 1
   integer, parameter :: solar_GS98 = 2
@@ -23,7 +22,7 @@ program initial_xa_calculator
   real(dp) :: log_num_frac(num_chem_elements)
   real(dp) :: mass_frac(num_chem_elements), num_frac(num_chem_elements)
   real(dp) :: alpha_div_Fe = 0.0d0 
-  real(dp) :: Fe_div_H = 0.0d0
+  real(dp) :: Fe_div_H = 0.0d0, M_div_H = 0.0d0, solar_M_div_H
   real(dp) :: X_div_H(num_chem_elements)
   real(dp) :: dY_div_dZ = 0d0, Z_div_X, X, Y, Z
   real(dp), parameter :: Y_BBN = 0.249d0
@@ -34,7 +33,7 @@ program initial_xa_calculator
   integer :: current, num_net_elements
 
   !file names
-  character (len=128) :: net_file, atm_file, arg
+  character (len=128) :: net_file, arg
 
   !for the net
   type(Net_General_info), pointer :: g      
@@ -62,19 +61,15 @@ program initial_xa_calculator
      stop
   else
      call get_command_argument(1,net_file)
-     if(use_ATLAS_atm) then
-        call get_command_argument(2,atm_file)
+     call get_command_argument(2,arg)
+     read(arg,*) Fe_div_H
+     call get_command_argument(3,arg)
+     read(arg,*) alpha_div_Fe
+     if(command_argument_count()==4)then
+        call get_command_argument(4,arg)
+        read(arg,*) dY_div_dZ
      else
-        call get_command_argument(2,arg)
-        read(arg,*) Fe_div_H
-        call get_command_argument(3,arg)
-        read(arg,*) alpha_div_Fe
-        if(command_argument_count()==4)then
-           call get_command_argument(4,arg)
-           read(arg,*) dY_div_dZ
-        else
-           dY_div_dZ = 1.5d0
-        endif
+        dY_div_dZ = 1.5d0
      endif
   endif
 
@@ -85,17 +80,11 @@ program initial_xa_calculator
   call setup_net(net_file, handle, species, chem_id, net_iso, ierr)
   if (ierr /= 0) stop '   uh oh!'
   call get_net_ptr(handle, g, ierr)
-
-  if(use_ATLAS_atm)then
-     !read A09 file, adjust ratios, compute number and mass fractions
-     call init_atlas_abunds
-  else     
-     call set_abunds(Fe_div_H, alpha_div_Fe,solar_mix)
-  endif
+  
+  call set_abunds(Fe_div_H, alpha_div_Fe,solar_mix)
 
   !determine number and names of elements in net g
   call net_elements_and_isotopes
-
 
   if(do_OPAL) call output_for_OPAL
 
@@ -282,6 +271,12 @@ contains
        log_num_frac(e_U) = -0.54
     endif
 
+    !set solar M/H
+    num_frac = exp(ln10*log_num_frac)
+    num_frac = num_frac/sum(num_frac)
+    solar_M_div_H = log10(sum(num_frac(3:num_chem_elements))/num_frac(1))
+
+    !now back to our calculation
     call set_X_div_H(alpha_div_Fe,Fe_div_H, X_div_H)
 
     log_num_frac = log_num_frac + X_div_H
@@ -297,6 +292,8 @@ contains
     X = mass_frac(1)
     Y = mass_frac(2)
     Z = 1.0d0-(X+Y)
+
+    
 
     if( dY_div_dZ /=0.0d0 )then
 
@@ -322,10 +319,22 @@ contains
        mass_frac(2) = Y
        mass_frac(3:num_chem_elements) = (Z/Zold)*mass_frac(3:num_chem_elements)
 
-       num_frac = mass_frac/element_atomic_weight
-       num_frac = num_frac/sum(num_frac)
-
     endif
+
+    num_frac = mass_frac/element_atomic_weight
+    num_frac = num_frac/sum(num_frac)
+
+    do i=1,num_chem_elements
+       if(element_atomic_weight(i)==0d0)then
+          write(*,*) i, el_name(i), element_atomic_weight(i)
+       endif
+    enddo
+    !do [M/H]
+    M_div_H = log10(sum(num_frac(3:num_chem_elements))/num_frac(1))
+    M_div_H = M_div_H - solar_M_div_H 
+    write(*,*) ' [M/H] = ', M_div_H
+    write(*,*) ' [Fe/H] = ', Fe_div_H
+    
   end subroutine set_abunds
 
   subroutine set_X_div_H(alpha_div_Fe,Fe_div_H,X_div_H)
@@ -347,49 +356,6 @@ contains
     
   end subroutine set_X_div_H
   
-  subroutine init_atlas_abunds
-    real(dp), parameter :: altas_offset = 12.04d0
-    real(dp) :: Num_Frac_Z
-    character(len=128) :: stuff
-    integer :: i, ilo, ihi
-    open(1,file=trim(atm_file))
-    do i=1,4
-       read(1,*) !skip header lines
-    enddo
-
-    num_frac = 0d0
-    log_num_frac = -9.9d1
-    read(1,'(a)') stuff
-
-    read(stuff(45:52),*) num_frac(1)
-    read(stuff(55:62),*) num_frac(2)
-
-    if(verbose) write(0,*) ' H, He = ', num_frac(1:2)
-       
-    do i=1,16
-       ilo = 6*(i-1)+3 ! start at Li
-       ihi = ilo+5
-       read(1,'(17x,6(3x,f7.2))') log_num_frac(ilo:ihi)
-    enddo
-    read(1,'(17x,3x,f7.2)') log_num_frac(ihi+1:ihi+1)
-    close(1)
-
-    num_Frac_Z = 1d0 - sum(num_frac(1:2))
-    num_frac(3:num_chem_elements) = 1d1**log_num_frac(3:num_chem_elements)
-    num_frac(3:num_chem_elements) = num_frac(3:num_chem_elements)*num_frac_Z/sum(num_frac(3:num_chem_elements))
-
-    !set mass fractions
-    mass_frac = num_frac*element_atomic_weight
-    mass_frac = mass_frac/sum(mass_frac)
-
-    if(verbose)then
-       do i=1,num_chem_elements
-          write(0,*) chem_element_name(i), log_num_frac(i), num_frac(i), mass_frac(i)
-       enddo
-       write(0,*) '   sum(X) = ', sum(num_frac)
-    endif
-  end subroutine init_atlas_abunds
-
   subroutine net_elements_and_isotopes
     integer :: pass
     character(len=iso_name_length) :: name
@@ -503,6 +469,32 @@ contains
        write(0,*) 'net_init failed'
        return
     end if
+
+    element_atomic_weight(e_rn) = 222
+    element_atomic_weight(e_fr) = 223
+    element_atomic_weight(e_ra) = 226
+    element_atomic_weight(e_ac) = 227
+    element_atomic_weight(e_np) = 237
+    element_atomic_weight(e_pu) = 244
+    element_atomic_weight(e_am) = 243
+    element_atomic_weight(e_cm) = 247
+    element_atomic_weight(e_bk) = 247
+    element_atomic_weight(e_cf) = 251
+    element_atomic_weight(e_es) = 252
+    element_atomic_weight(e_fm) = 257
+    element_atomic_weight(e_md) = 258
+    element_atomic_weight(e_no) = 259
+    element_atomic_weight(e_lr) = 262
+    element_atomic_weight(e_rf) = 261
+    element_atomic_weight(e_db) = 262
+    element_atomic_weight(e_sg) = 266
+    element_atomic_weight(e_bh) = 264
+    element_atomic_weight(e_hs) = 277
+    element_atomic_weight(e_mt) = 268
+    element_atomic_weight(e_ds) = 280
+    element_atomic_weight(e_rg) = 272
+    element_atomic_weight(e_cn) = 280
+    
   end subroutine initialize_mesa
 
 
@@ -559,8 +551,10 @@ contains
   end subroutine setup_net
 
   subroutine output_XYZ
-    character(len=9) :: fmt = '(a9,f8.6)'
+    character(len=9) :: fmt = '(a9,f9.6)'
     if(verbose)then
+       write(0,fmt) '[Fe/H]=', fe_div_h
+       write(0,fmt) ' [M/H]=', M_div_H
        write(0,fmt) ' X Y Z '
        write(0,fmt) ' X = ', mass_frac(1)
        write(0,fmt) ' Y = ', mass_frac(2)
@@ -571,6 +565,7 @@ contains
     write(98,'(1p,e20.10)') mass_frac(1)
     write(98,'(1p,e20.10)') mass_frac(2)
     write(98,'(1p,e20.10)') sum(mass_frac(3:num_chem_elements))
+    
     close(98)
   end subroutine output_XYZ
   

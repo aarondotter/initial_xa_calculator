@@ -1,0 +1,5 @@
+input_Zbase
+input_XYZ
+input_initial_xa.data
+src/*.o
+initial_xa_calculator
