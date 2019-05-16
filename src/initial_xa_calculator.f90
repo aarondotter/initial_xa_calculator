@@ -11,7 +11,7 @@ program initial_xa_calculator
 
   implicit none
 
-  logical, parameter :: verbose = .true.
+  logical, parameter :: verbose = .false.
   logical, parameter :: do_OPAL = .false.
   logical, parameter :: do_MESA = .true.
   logical, parameter :: do_XYZ = .true.
@@ -27,15 +27,16 @@ program initial_xa_calculator
   real(dp) :: X_div_H(num_chem_elements)
   real(dp) :: dY_div_dZ = 0d0, Z_div_X, X, Y, Z
   real(dp), parameter :: Y_BBN = 0.249d0
-  integer :: el, i, id, ierr, j, k, handle, species, solar_mix
+  integer :: el, i, id, ierr, j, k, handle, species, solar_mix, io
   integer, pointer :: chem_id(:), net_iso(:)
 
   !for the net
   integer :: current, num_net_elements
 
   !file names
-  character (len=128) :: net_file, arg
-
+  character(len=128) :: net_file, arg
+  character(len=8) :: date
+  
   !for the net
   type(Net_General_info), pointer :: g      
 
@@ -74,12 +75,15 @@ program initial_xa_calculator
      endif
   endif
 
+  call date_and_time(date=date)
+  
   !initialize MESA modules
   ierr = 0
   call initialize_mesa('', ierr)
   if (ierr /= 0) stop '   oh no!'         
   call setup_net(net_file, handle, species, chem_id, net_iso, ierr)
   if (ierr /= 0) stop '   uh oh!'
+  
   call get_net_ptr(handle, g, ierr)
   
   call set_abunds(Fe_div_H, alpha_div_Fe,solar_mix)
@@ -562,12 +566,11 @@ contains
        write(0,fmt) ' Z = ', sum(mass_frac(3:))
        write(0,fmt) ' X+Y+Z = ', sum(mass_frac)
     endif
-    open(98,file='input_XYZ')
-    write(98,'(1p,e20.10)') mass_frac(1)
-    write(98,'(1p,e20.10)') mass_frac(2)
-    write(98,'(1p,e20.10)') sum(mass_frac(3:num_chem_elements))
-    
-    close(98)
+    open(newunit=io,file='input_XYZ')
+    write(io,'(1p,e20.10)') mass_frac(1)
+    write(io,'(1p,e20.10)') mass_frac(2)
+    write(io,'(1p,e20.10)') sum(mass_frac(3:num_chem_elements))
+    close(io)
   end subroutine output_XYZ
   
   subroutine output_for_OPAL
@@ -598,7 +601,9 @@ contains
     !for MESA/star file_for_uniform_xa
     num_elements = size(e)
     sum = 0d0
-    open(99,file='input_initial_xa.data')
+    open(newunit=io,file='input_initial_xa.data')
+    write(io,'(a,a)') '!!! DATE = ', date
+    write(io,'(a,a)') '!!!  NET = ', adjustl(adjustr(net_file))
     do pass=1,2
        do i=1,num_elements
           do j=1,num_chem_elements
@@ -608,9 +613,9 @@ contains
                       sum = sum + e(i)% iso_fracs(k)*mass_frac(j)
                    elseif(pass==2)then
                       if(i==num_elements) then
-                         write(99,'(a8,1p,e20.10)') e(i)% iso_names(k), e(i)% iso_fracs(k) * (mass_frac(j) + extra)
+                         write(io,'(a8,1p,e20.10)') e(i)% iso_names(k), e(i)% iso_fracs(k) * (mass_frac(j) + extra)
                       else
-                         write(99,'(a8,1p,e20.10)') e(i)% iso_names(k), e(i)% iso_fracs(k) * mass_frac(j)
+                         write(io,'(a8,1p,e20.10)') e(i)% iso_names(k), e(i)% iso_fracs(k) * mass_frac(j)
                       endif
                    endif
                 enddo
@@ -620,7 +625,7 @@ contains
        !here, if sum/=1, add the leftovers to the heaviest element
        if(pass==1) extra= 1d0 - sum
     enddo
-    close(99)
+    close(io)
 
   end subroutine output_for_MESA
 

@@ -13,7 +13,6 @@ include $(MESA_DIR)/utils/makefile_header
 
 # STEP 2: info about the libraries
 
-#LOAD_LOCAL = -L$(LOCAL_LIB_DIR) -lnet
 LOAD_OTHER = -L$(MESA_LIB_DIR) -lnet  -leos -lrates -lchem $(LOAD_MESA_NUMERICS)
 
 #################################################################
