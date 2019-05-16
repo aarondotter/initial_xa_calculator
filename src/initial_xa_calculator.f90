@@ -1,4 +1,5 @@
 program initial_xa_calculator
+  !update to mesa11701
 
   use const_def
   use const_lib, only: const_init
