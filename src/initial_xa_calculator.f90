@@ -11,7 +11,7 @@ program initial_xa_calculator
 
   implicit none
 
-  logical, parameter :: verbose = .true.
+  logical, parameter :: verbose = .false.
   logical, parameter :: do_OPAL = .false.
   logical, parameter :: do_MESA = .true.
   logical, parameter :: do_XYZ = .true.
