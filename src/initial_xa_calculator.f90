@@ -11,7 +11,7 @@ program initial_xa_calculator
 
   implicit none
 
-  logical, parameter :: verbose = .false.
+  logical, parameter :: verbose = .true.
   logical, parameter :: do_OPAL = .false.
   logical, parameter :: do_MESA = .true.
   logical, parameter :: do_XYZ = .true.
@@ -374,8 +374,7 @@ contains
           el = chem_isos% Z(id)
           name = chem_isos% name(id)
           if(pass==1.and.id > 0.and.verbose) write(0,'(2i4,a8,f10.6,2i8)') i, &
-               chem_isos% chem_id(id), trim(name), &
-               chem_isos% W(id), el, chem_isos% N(id)
+               chem_isos% chem_id(id), trim(name), chem_isos% W(id), el, chem_isos% N(id)
           !count elements present:
           if(trim(name) /= 'neut' .and. trim(name) /= 'prot') then
              if(el == current)then
@@ -426,25 +425,21 @@ contains
     real(dp), parameter :: eps = 1d-10
     integer :: i, n, count
     n=size(fracs)
-    fracs=fracs*1d-2 !originally sum to 100%
-    sum_fracs=sum(fracs)
     if(sum_fracs==0d0 .or. n==1 )then
-       fracs=1d0
-    else if(sum_fracs > 0d0 .and. sum_fracs < 1d0)then
-       count=0
-       diff=1d0-sum_fracs
-       do i=1,n
-          if(fracs(i)==0d0) count=count+1
-       enddo
-       where(fracs==0d0) fracs = diff/real(count,kind=dp)
-    endif
-    sum_fracs = sum(fracs)
-    fracs = fracs/sum_fracs
-    if(abs(sum(fracs) - 1d0) > eps) then
-       write(0,*) '  fix_isotope_element_fractions  '
-       write(0,*) fracs
-       write(0,*) sum_fracs
-       stop 77
+
+       fracs(1)=1d0
+
+    else
+
+       sum_fracs = sum(fracs)
+       fracs = fracs/sum_fracs
+       if(abs(sum(fracs) - 1d0) > eps) then
+          write(0,*) '  fix_isotope_element_fractions  '
+          write(0,*) fracs
+          write(0,*) sum_fracs
+          stop 77
+       endif
+       
     endif
   end subroutine fix_isotope_element_fractions
 
@@ -475,6 +470,7 @@ contains
        return
     end if
 
+    !MESA doesn't populate these elements
     element_atomic_weight(e_rn) = 222
     element_atomic_weight(e_fr) = 223
     element_atomic_weight(e_ra) = 226

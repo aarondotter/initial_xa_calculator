@@ -2,4 +2,6 @@ input_Zbase
 input_XYZ
 input_initial_xa.data
 src/*.o
+src/*ATLAS*
 initial_xa_calculator
+*.net
