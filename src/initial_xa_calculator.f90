@@ -345,7 +345,7 @@ contains
   subroutine set_X_div_H(alpha_div_Fe,Fe_div_H,X_div_H)
     real(dp), intent(in) :: alpha_div_Fe, Fe_div_H
     real(dp), intent(out) :: X_div_H(num_chem_elements)
-    real(dp) :: X_div_Fe(num_chem_elements)
+    
     X_div_H = 0d0
 
     X_div_H(e_O) = alpha_div_Fe
@@ -364,6 +364,7 @@ contains
   subroutine net_elements_and_isotopes
     integer :: pass
     character(len=iso_name_length) :: name
+    
     !print out some details of the current net and count the elements
     !first pass counts, second pass assigns to net_elements array
     do pass = 1,3
@@ -422,16 +423,13 @@ contains
   subroutine fix_isotope_element_fractions(fracs)
     real(dp), intent(inout) :: fracs(:)
     real(dp) :: sum_fracs, diff
-    real(dp), parameter :: eps = 1d-10
+    real(dp), parameter :: eps = 1.0E-14_dp
     integer :: i, n, count
     n=size(fracs)
-    if(sum_fracs==0d0 .or. n==1 )then
-
-       fracs(1)=1d0
-
+    sum_fracs=sum(fracs)
+    if(sum_fracs < eps )then
+       fracs = 0.0_dp
     else
-
-       sum_fracs = sum(fracs)
        fracs = fracs/sum_fracs
        if(abs(sum(fracs) - 1d0) > eps) then
           write(0,*) '  fix_isotope_element_fractions  '
@@ -439,7 +437,6 @@ contains
           write(0,*) sum_fracs
           stop 77
        endif
-       
     endif
   end subroutine fix_isotope_element_fractions
 
