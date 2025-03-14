@@ -3,6 +3,8 @@
 #MESA_DIR = 
 #if you don't set this as an environment variable, set it here
 
+#required for WORK_COMPILE in newer version of MESA
+WORK_SRC_DIR='.'
 #################################################################
 
 # STEP 1: get the standard compiler setup
